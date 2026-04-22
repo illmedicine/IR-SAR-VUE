@@ -10,6 +10,10 @@
 <!-- satellite.js (UMD, exposes window.satellite). Real-time SGP4 propagation. -->
 <script src="https://cdn.jsdelivr.net/npm/satellite.js@5.0.0/dist/satellite.min.js"></script>
 
+<!-- Leaflet for the in-panel imagery map (NASA GIBS WMTS tiles). -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <!-- Three.js via ES modules + importmap (official approach for r150+). -->
 <script type="importmap">
 {
@@ -90,32 +94,65 @@
         <div class="info-header">
             <h3 id="imagery-title">Landsat Imagery</h3>
             <div class="imagery-tabs">
-                <button class="tab active" data-tab="live">Live Downlink</button>
-                <button class="tab" data-tab="look">24h Replay</button>
-                <button class="tab" data-tab="worldview">Worldview</button>
+                <button class="tab active" data-tab="map">Live Tiles</button>
+                <button class="tab" data-tab="launch">Full Viewers</button>
             </div>
             <button id="imagery-close" title="Close">×</button>
         </div>
         <div id="imagery-body">
-            <div id="imagery-frame-wrap">
-                <iframe id="imagery-frame"
-                        title="Landsat imagery"
-                        referrerpolicy="no-referrer"
-                        allow="fullscreen"
-                        loading="lazy"></iframe>
-                <div id="imagery-fallback" class="imagery-fallback hidden">
-                    <p>The embed was blocked by the provider. Open it directly:</p>
-                    <a id="imagery-fallback-link" href="#" target="_blank" rel="noopener">Open in new tab →</a>
+            <!-- Leaflet map renders NASA GIBS tiles (MODIS / Landsat) with a date slider. -->
+            <div id="imagery-map-wrap">
+                <div id="imagery-map"></div>
+                <div id="imagery-controls">
+                    <label>Layer
+                        <select id="imagery-layer">
+                            <option value="modis-terra">MODIS Terra (True Color, daily)</option>
+                            <option value="modis-aqua">MODIS Aqua (True Color, daily)</option>
+                            <option value="viirs-snpp">VIIRS SNPP (True Color, daily)</option>
+                            <option value="viirs-noaa20">VIIRS NOAA-20 (True Color, daily)</option>
+                            <option value="landsat-weld">Landsat WELD CONUS (monthly composite)</option>
+                        </select>
+                    </label>
+                    <label>Date <span id="imagery-date-label">—</span>
+                        <input type="range" id="imagery-date" min="0" max="7" step="1" value="1" />
+                    </label>
+                    <button id="imagery-play" title="Animate last 7 days">▶ Replay 7d</button>
                 </div>
             </div>
-            <div class="imagery-meta">
-                <p id="imagery-caption">Live Landsat 8/9 downlink as acquisitions arrive at USGS EROS.</p>
-                <div class="imagery-links">
-                    <a href="https://earthnow.usgs.gov/observer/" target="_blank" rel="noopener">EarthNow ↗</a>
-                    <a href="https://landsatlook.usgs.gov/" target="_blank" rel="noopener">LandsatLook ↗</a>
-                    <a href="https://worldview.earthdata.nasa.gov/" target="_blank" rel="noopener">NASA Worldview ↗</a>
-                    <a href="https://landsat.usgs.gov/landsat-acquisition-tool" target="_blank" rel="noopener">Acquisition Tool ↗</a>
+
+            <!-- "Full Viewers" tab: launch cards for providers that refuse to be iframed. -->
+            <div id="imagery-launch" class="hidden">
+                <div class="launch-grid">
+                    <a class="launch-card" href="https://earthnow.usgs.gov/observer/" target="_blank" rel="noopener">
+                        <h4>USGS EarthNow</h4>
+                        <p>Live Landsat 8 / 9 downlink as acquisitions arrive at EROS — auto-advancing tile display.</p>
+                        <span class="launch-cta">Open ↗</span>
+                    </a>
+                    <a class="launch-card" href="https://landsatlook.usgs.gov/" target="_blank" rel="noopener">
+                        <h4>LandsatLook</h4>
+                        <p>Interactive 24-hour &amp; full-archive viewer with scene search and date scrubbing.</p>
+                        <span class="launch-cta">Open ↗</span>
+                    </a>
+                    <a class="launch-card" href="https://worldview.earthdata.nasa.gov/" target="_blank" rel="noopener">
+                        <h4>NASA Worldview</h4>
+                        <p>Landsat, MODIS, VIIRS imagery with a 24-hour timeline for true replay.</p>
+                        <span class="launch-cta">Open ↗</span>
+                    </a>
+                    <a class="launch-card" href="https://apps.sentinel-hub.com/eo-browser/?zoom=4&datasetId=AWS_LANDSAT_OT_L2" target="_blank" rel="noopener">
+                        <h4>Sentinel Hub EO Browser</h4>
+                        <p>Full-resolution Landsat OLI Level-2 browsing with on-the-fly band combos.</p>
+                        <span class="launch-cta">Open ↗</span>
+                    </a>
+                    <a class="launch-card" href="https://landsat.usgs.gov/landsat-acquisition-tool" target="_blank" rel="noopener">
+                        <h4>Acquisition Tool</h4>
+                        <p>When Landsat will next image a given location (the "will it pass overhead?" answer).</p>
+                        <span class="launch-cta">Open ↗</span>
+                    </a>
                 </div>
+            </div>
+
+            <div class="imagery-meta">
+                <p id="imagery-caption">NASA GIBS global daily imagery. Drag the date slider to replay the last 7 days.</p>
             </div>
         </div>
     </aside>

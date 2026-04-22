@@ -501,77 +501,175 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
     }
 
     // ---------- Landsat imagery side panel ----------
-    // Sources:
-    //   • EarthNow        — https://earthnow.usgs.gov/observer/  (near-real-time Landsat
-    //                       8/9 downlink as data arrives at EROS, auto-advancing tiles).
-    //   • LandsatLook     — https://landsatlook.usgs.gov/        (interactive 24h / archive
-    //                       viewer with full scene search and replay).
-    //   • NASA Worldview  — https://worldview.earthdata.nasa.gov/?l=Landsat_WELD_CONUS_... 
-    //                       (daily Landsat imagery over GIBS tiles, date-scrubbable).
-    // Note: some of these providers set X-Frame-Options: SAMEORIGIN and cannot be iframed.
-    // We detect that and show a "Open in new tab" fallback so the UX never breaks.
-    const IMAGERY_SOURCES = {
-        live:      { label: 'Live Downlink', url: 'https://earthnow.usgs.gov/observer/',
-                     caption: 'EarthNow — Landsat 8/9 downlink as acquisitions arrive at USGS EROS (near real-time).' },
-        look:      { label: '24h Replay',    url: 'https://landsatlook.usgs.gov/',
-                     caption: 'LandsatLook — scrubbable full-resolution archive; set the date slider to the last 24 hours for replay.' },
-        worldview: { label: 'Worldview',     url: 'https://worldview.earthdata.nasa.gov/?v=-180,-90,180,90&l=Reference_Labels_15m,Reference_Features_15m,Coastlines_15m,Landsat_WELD_CorrectedReflectance_Bands743_Global_Monthly(hidden),MODIS_Terra_CorrectedReflectance_TrueColor&lg=true',
-                     caption: 'NASA Worldview — Landsat and MODIS imagery with a 24-hour timeline at the bottom for replay.' }
+    // Strategy: USGS/NASA viewers (EarthNow, LandsatLook, Worldview) all set
+    // `frame-ancestors 'self'` in their CSP and cannot be iframed — they appear
+    // blank / broken when embedded. We therefore render imagery *directly in-app*
+    // using NASA GIBS WMTS tile services, which are CORS-enabled and built for this.
+    //
+    // GIBS docs: https://nasa-gibs.github.io/gibs-api-docs/
+    // Tile URL template:
+    //   https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/{LAYER}/default/{TIME}/
+    //   GoogleMapsCompatible_Level{MAX}/{z}/{y}/{x}.{ext}
+    //
+    // Each GIBS layer has a native max zoom and file extension; the table below
+    // encodes the ones relevant to near-real-time Earth observation.
+    const GIBS_LAYERS = {
+        'modis-terra': {
+            id:   'MODIS_Terra_CorrectedReflectance_TrueColor',
+            max:  9, ext: 'jpg',
+            label:'MODIS Terra (daily, ~10:30 local descending)',
+            attr: 'NASA EOSDIS GIBS · MODIS Terra'
+        },
+        'modis-aqua': {
+            id:   'MODIS_Aqua_CorrectedReflectance_TrueColor',
+            max:  9, ext: 'jpg',
+            label:'MODIS Aqua (daily, ~13:30 local ascending)',
+            attr: 'NASA EOSDIS GIBS · MODIS Aqua'
+        },
+        'viirs-snpp': {
+            id:   'VIIRS_SNPP_CorrectedReflectance_TrueColor',
+            max:  9, ext: 'jpg',
+            label:'VIIRS SNPP (daily, higher resolution)',
+            attr: 'NASA EOSDIS GIBS · VIIRS SNPP'
+        },
+        'viirs-noaa20': {
+            id:   'VIIRS_NOAA20_CorrectedReflectance_TrueColor',
+            max:  9, ext: 'jpg',
+            label:'VIIRS NOAA-20 (daily)',
+            attr: 'NASA EOSDIS GIBS · VIIRS NOAA-20'
+        },
+        'landsat-weld': {
+            // Landsat WELD (Web-Enabled Landsat Data) CONUS monthly composite.
+            id:   'Landsat_WELD_CorrectedReflectance_Bands743_CONUS_Monthly',
+            max:  12, ext: 'png',
+            label:'Landsat WELD CONUS (monthly, high-res)',
+            attr: 'NASA EOSDIS GIBS · USGS Landsat WELD'
+        }
     };
 
-    const elImagery      = $('imagery');
-    const elImageryFrame = $('imagery-frame');
-    const elImageryCap   = $('imagery-caption');
-    const elImageryTitle = $('imagery-title');
-    const elImageryFallback = $('imagery-fallback');
-    const elImageryFallbackLink = $('imagery-fallback-link');
-    let   imageryLoadTimer = null;
+    const elImagery       = $('imagery');
+    const elImageryTitle  = $('imagery-title');
+    const elImageryMapWrap= $('imagery-map-wrap');
+    const elImageryLaunch = $('imagery-launch');
+    const elImageryMap    = $('imagery-map');
+    const elImageryLayer  = $('imagery-layer');
+    const elImageryDate   = $('imagery-date');
+    const elImageryDateLb = $('imagery-date-label');
+    const elImageryPlay   = $('imagery-play');
+    const elImageryCap    = $('imagery-caption');
+
+    let leafletMap   = null;
+    let activeTile   = null;
+    let playTimer    = null;
+
+    // Date slider: value 0..7 maps to (today - value) days ago. GIBS imagery for the
+    // current day is usually available by early UTC afternoon, so we default to
+    // "yesterday" to avoid empty tiles first thing after UTC midnight.
+    function dateForOffset(offset) {
+        const d = new Date();
+        d.setUTCDate(d.getUTCDate() - offset);
+        return d;
+    }
+    function fmtDate(d) { return d.toISOString().slice(0, 10); }
+
+    function ensureMap() {
+        if (leafletMap) return leafletMap;
+        leafletMap = L.map(elImageryMap, {
+            center: [20, 0], zoom: 2, minZoom: 1, maxZoom: 9,
+            worldCopyJump: true, attributionControl: true, zoomControl: true
+        });
+        return leafletMap;
+    }
+
+    function applyLayer() {
+        const map = ensureMap();
+        const key = elImageryLayer.value;
+        const spec = GIBS_LAYERS[key];
+        const offset = parseInt(elImageryDate.value, 10) || 1;
+        const date = fmtDate(dateForOffset(offset));
+        elImageryDateLb.textContent = date + ' UTC';
+
+        const url =
+            'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/' + spec.id +
+            '/default/' + date +
+            '/GoogleMapsCompatible_Level' + spec.max + '/{z}/{y}/{x}.' + spec.ext;
+
+        if (activeTile) { map.removeLayer(activeTile); activeTile = null; }
+        activeTile = L.tileLayer(url, {
+            attribution: spec.attr + ' · ' + date,
+            tileSize: 256,
+            maxZoom: spec.max,
+            // GIBS returns 200 with a blank tile for out-of-coverage — acceptable.
+            noWrap: false,
+            errorTileUrl: '',
+            bounds: [[-85.0511, -180], [85.0511, 180]]
+        }).addTo(map);
+
+        elImageryCap.textContent = spec.label + ' — ' + date + ' UTC.';
+    }
+
+    function startReplay() {
+        if (playTimer) return stopReplay();
+        elImageryPlay.classList.add('playing');
+        elImageryPlay.textContent = '■ Stop';
+        let i = 7;
+        playTimer = setInterval(() => {
+            elImageryDate.value = String(i);
+            applyLayer();
+            i = (i - 1 + 8) % 8; // 7 → 0, then loop back to 7
+            if (i === 7) { /* one full loop just finished */ }
+        }, 900);
+    }
+    function stopReplay() {
+        clearInterval(playTimer); playTimer = null;
+        elImageryPlay.classList.remove('playing');
+        elImageryPlay.textContent = '▶ Replay 7d';
+    }
 
     function openImageryPanel(sat) {
         elImageryTitle.textContent = (sat && sat.name ? sat.name : 'Landsat') + ' — Imagery';
         elImagery.classList.remove('hidden');
         document.body.classList.add('imagery-open');
-        // Default tab = live.
-        setImageryTab('live');
+        setImageryTab('map');
+        // Defer Leaflet setup until the panel is visible so it measures correctly.
+        setTimeout(() => {
+            ensureMap().invalidateSize();
+            // Center over the satellite's current sub-point if known.
+            if (sat && sat.satrec) {
+                try {
+                    const pv = satellite.propagate(sat.satrec, currentDate());
+                    if (pv && pv.position) {
+                        const g = satellite.eciToGeodetic(pv.position, satellite.gstime(currentDate()));
+                        leafletMap.setView([satellite.degreesLat(g.latitude), satellite.degreesLong(g.longitude)], 4);
+                    }
+                } catch (e) { /* ignore */ }
+            }
+            applyLayer();
+        }, 30);
     }
 
     function closeImageryPanel() {
+        stopReplay();
         elImagery.classList.add('hidden');
         document.body.classList.remove('imagery-open');
-        // Stop any playing media by clearing the src.
-        elImageryFrame.src = 'about:blank';
-        elImageryFallback.classList.add('hidden');
     }
 
     function setImageryTab(key) {
-        const src = IMAGERY_SOURCES[key];
-        if (!src) return;
         document.querySelectorAll('#imagery .tab').forEach(t => {
             t.classList.toggle('active', t.getAttribute('data-tab') === key);
         });
-        elImageryCap.textContent = src.caption;
-        elImageryFallback.classList.add('hidden');
-        elImageryFrame.style.visibility = 'visible';
-        elImageryFrame.src = src.url;
-
-        // If the provider blocks framing (X-Frame-Options / CSP), onload never fires with
-        // a readable document. Give it 6 s; if nothing rendered, show the fallback link.
-        clearTimeout(imageryLoadTimer);
-        let loaded = false;
-        elImageryFrame.onload = () => { loaded = true; };
-        imageryLoadTimer = setTimeout(() => {
-            if (!loaded) {
-                elImageryFallbackLink.href = src.url;
-                elImageryFallbackLink.textContent = 'Open ' + src.label + ' in new tab →';
-                elImageryFallback.classList.remove('hidden');
-            }
-        }, 6000);
+        const showMap = key === 'map';
+        elImageryMapWrap.classList.toggle('hidden', !showMap);
+        elImageryLaunch.classList.toggle('hidden', showMap);
     }
 
     document.querySelectorAll('#imagery .tab').forEach(t => {
         t.addEventListener('click', () => setImageryTab(t.getAttribute('data-tab')));
     });
     $('imagery-close').addEventListener('click', closeImageryPanel);
+    elImageryLayer.addEventListener('change', applyLayer);
+    elImageryDate.addEventListener('input', applyLayer);
+    elImageryPlay.addEventListener('click', startReplay);
 
     // ---------- Picking ----------
     canvas.addEventListener('click', onCanvasClick);
