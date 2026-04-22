@@ -453,6 +453,18 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         const inc    = (sat.satrec.inclo * 180 / Math.PI).toFixed(2) + '°';
         const ecc    = sat.satrec.ecco.toFixed(5);
 
+        // TLE epoch (data freshness). satrec.epochyr is 2-digit; satrec.epochdays = day-of-year.
+        // Propagation accuracy degrades ~1 km/day for LEO; show age so users can judge it.
+        let epochStr = '—', ageStr = '';
+        try {
+            const yr = sat.satrec.epochyr < 57 ? 2000 + sat.satrec.epochyr : 1900 + sat.satrec.epochyr;
+            const epochDate = new Date(Date.UTC(yr, 0, 1) + (sat.satrec.epochdays - 1) * 86400000);
+            epochStr = epochDate.toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
+            const ageDays = (now - epochDate) / 86400000;
+            const ageColor = ageDays < 2 ? '#66dd88' : ageDays < 7 ? '#ffcc66' : '#ff7766';
+            ageStr = ' <span style="color:' + ageColor + '">(' + ageDays.toFixed(1) + ' d old)</span>';
+        } catch (e) { /* ignore */ }
+
         const links = SatCatalog.externalLinks(sat).map(l =>
             '<a href="' + l.href + '" target="_blank" rel="noopener">' + l.label + '</a>'
         ).join('');
@@ -479,6 +491,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
                 '<dt>Period</dt><dd>' + period + '</dd>' +
                 '<dt>Inclination</dt><dd>' + inc + '</dd>' +
                 '<dt>Eccentricity</dt><dd>' + ecc + '</dd>' +
+                '<dt>TLE Epoch</dt><dd>' + epochStr + ageStr + '</dd>' +
                 (meta.operator ? '<dt>Operator</dt><dd>' + meta.operator + '</dd>' : '') +
                 (meta.launched ? '<dt>Launched</dt><dd>' + meta.launched + '</dd>' : '') +
                 (meta.orbit    ? '<dt>Orbit</dt><dd>' + meta.orbit + '</dd>'       : '') +
