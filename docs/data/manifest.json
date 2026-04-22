@@ -1,1 +1,25 @@
-{"updated":"seed","catalogs":{"stations":2,"science":3}}
+{
+  "updated": "2026-04-22T18:31:19Z",
+  "catalogs": {
+    "active": 15132,
+    "beidou": 54,
+    "cubesat": 87,
+    "galileo": 33,
+    "geo": 575,
+    "glo-ops": 28,
+    "goes": 6,
+    "gps-ops": 33,
+    "intelsat": 56,
+    "iridium-NEXT": 80,
+    "military": 23,
+    "oneweb": 651,
+    "planet": 136,
+    "resource": 161,
+    "sarsat": 84,
+    "science": 48,
+    "spire": 76,
+    "starlink": 10164,
+    "stations": 28,
+    "weather": 70
+  }
+}
