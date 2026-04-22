@@ -8,27 +8,27 @@
     // Catalog groups fetched from CelesTrak 'gp.php' (TLE format).
     // Color chosen for point rendering; purpose text shown in info panel when a per-sat entry isn't present.
     const CATALOGS = [
-        { id: 'stations',   name: 'Space Stations',    color: 0xffffff, url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=tle',         purpose: 'Crewed or cargo spacecraft (ISS, Tiangong, resupply).', kind: 'sci', on: true },
-        { id: 'starlink',   name: 'Starlink',          color: 0x66bbff, url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=starlink&FORMAT=tle',         purpose: 'SpaceX broadband constellation (LEO, ~550 km).',         kind: 'com', on: true },
-        { id: 'oneweb',     name: 'OneWeb',            color: 0x99ddff, url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=oneweb&FORMAT=tle',           purpose: 'OneWeb broadband constellation (~1200 km).',             kind: 'com', on: false },
-        { id: 'gps-ops',    name: 'GPS',               color: 0xffcc44, url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=gps-ops&FORMAT=tle',          purpose: 'US NAVSTAR GPS navigation (MEO).',                       kind: 'nav', on: true },
-        { id: 'glo-ops',    name: 'GLONASS',           color: 0xff9955, url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=glo-ops&FORMAT=tle',          purpose: 'Russian GLONASS navigation (MEO).',                      kind: 'nav', on: false },
-        { id: 'galileo',    name: 'Galileo',           color: 0xaa88ff, url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=galileo&FORMAT=tle',          purpose: 'EU Galileo navigation (MEO).',                           kind: 'nav', on: false },
-        { id: 'beidou',     name: 'BeiDou',            color: 0xff66aa, url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=beidou&FORMAT=tle',           purpose: 'Chinese BeiDou navigation (MEO/GEO/IGSO).',              kind: 'nav', on: false },
-        { id: 'science',    name: 'Science',           color: 0xc6aaff, url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=science&FORMAT=tle',          purpose: 'Space science and observatories.',                      kind: 'sci', on: false },
-        { id: 'weather',    name: 'Weather',           color: 0x55ddcc, url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=weather&FORMAT=tle',          purpose: 'Meteorological satellites (LEO/GEO).',                   kind: 'sci', on: false },
-        { id: 'noaa',       name: 'NOAA',              color: 0x33bbaa, url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=noaa&FORMAT=tle',             purpose: 'NOAA environmental / polar weather.',                    kind: 'sci', on: false },
-        { id: 'goes',       name: 'GOES',              color: 0x22aa99, url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=goes&FORMAT=tle',             purpose: 'Geostationary weather (GEO).',                           kind: 'sci', on: false },
-        { id: 'resource',   name: 'Earth Resources',   color: 0x88dd66, url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=resource&FORMAT=tle',         purpose: 'Earth observation / imagery.',                           kind: 'sci', on: false },
-        { id: 'sarsat',     name: 'Search & Rescue',   color: 0xffaa66, url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=sarsat&FORMAT=tle',           purpose: 'COSPAS-SARSAT beacon relay.',                            kind: 'sci', on: false },
-        { id: 'geo',        name: 'Geostationary',     color: 0xffdd88, url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=geo&FORMAT=tle',              purpose: 'Active geostationary satellites.',                       kind: 'com', on: false },
-        { id: 'intelsat',   name: 'Intelsat',          color: 0x88bbff, url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=intelsat&FORMAT=tle',         purpose: 'Intelsat commercial comms (GEO).',                       kind: 'com', on: false },
-        { id: 'iridium-NEXT', name: 'Iridium NEXT',    color: 0x5599ee, url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=iridium-NEXT&FORMAT=tle',     purpose: 'Iridium NEXT voice/data/L-band (LEO, ~780 km).',         kind: 'com', on: false },
-        { id: 'planet',     name: 'Planet Labs',       color: 0x77ee99, url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=planet&FORMAT=tle',           purpose: 'Planet imaging cubesats (Dove/SuperDove).',              kind: 'sci', on: false },
-        { id: 'spire',      name: 'Spire',             color: 0x99ee77, url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=spire&FORMAT=tle',            purpose: 'Spire Lemur AIS/weather cubesats.',                      kind: 'sci', on: false },
-        { id: 'military',   name: 'Military',          color: 0xff5566, url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=military&FORMAT=tle',         purpose: 'Unclassified military payloads.',                        kind: 'mil', on: false },
-        { id: 'cubesat',    name: 'CubeSats',          color: 0xaaaaaa, url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=cubesat&FORMAT=tle',          purpose: 'CubeSat-class smallsats (miscellaneous).',               kind: 'sci', on: false },
-        { id: 'active',     name: 'All Active',        color: 0x888888, url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=tle',           purpose: 'All tracked active objects.',                            kind: 'other', on: false }
+        { id: 'stations',   name: 'Space Stations',    color: 0xffffff, searchTerm: 'ISS',      url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=tle',         purpose: 'Crewed or cargo spacecraft (ISS, Tiangong, resupply).', kind: 'sci', on: true },
+        { id: 'starlink',   name: 'Starlink',          color: 0x66bbff, searchTerm: 'starlink', url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=starlink&FORMAT=tle',         purpose: 'SpaceX broadband constellation (LEO, ~550 km).',         kind: 'com', on: true },
+        { id: 'oneweb',     name: 'OneWeb',            color: 0x99ddff, searchTerm: 'oneweb',   url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=oneweb&FORMAT=tle',           purpose: 'OneWeb broadband constellation (~1200 km).',             kind: 'com', on: false },
+        { id: 'gps-ops',    name: 'GPS',               color: 0xffcc44, searchTerm: 'navstar',  url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=gps-ops&FORMAT=tle',          purpose: 'US NAVSTAR GPS navigation (MEO).',                       kind: 'nav', on: true },
+        { id: 'glo-ops',    name: 'GLONASS',           color: 0xff9955, searchTerm: 'cosmos',   url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=glo-ops&FORMAT=tle',          purpose: 'Russian GLONASS navigation (MEO).',                      kind: 'nav', on: false },
+        { id: 'galileo',    name: 'Galileo',           color: 0xaa88ff, searchTerm: 'galileo',  url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=galileo&FORMAT=tle',          purpose: 'EU Galileo navigation (MEO).',                           kind: 'nav', on: false },
+        { id: 'beidou',     name: 'BeiDou',            color: 0xff66aa, searchTerm: 'beidou',   url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=beidou&FORMAT=tle',           purpose: 'Chinese BeiDou navigation (MEO/GEO/IGSO).',              kind: 'nav', on: false },
+        { id: 'science',    name: 'Science',           color: 0xc6aaff, searchTerm: 'hubble',   url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=science&FORMAT=tle',          purpose: 'Space science and observatories.',                      kind: 'sci', on: false },
+        { id: 'weather',    name: 'Weather',           color: 0x55ddcc, searchTerm: 'noaa',     url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=weather&FORMAT=tle',          purpose: 'Meteorological satellites (LEO/GEO).',                   kind: 'sci', on: false },
+        { id: 'noaa',       name: 'NOAA',              color: 0x33bbaa, searchTerm: 'noaa',     url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=noaa&FORMAT=tle',             purpose: 'NOAA environmental / polar weather.',                    kind: 'sci', on: false },
+        { id: 'goes',       name: 'GOES',              color: 0x22aa99, searchTerm: 'goes',     url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=goes&FORMAT=tle',             purpose: 'Geostationary weather (GEO).',                           kind: 'sci', on: false },
+        { id: 'resource',   name: 'Earth Resources',   color: 0x88dd66, searchTerm: 'landsat',  url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=resource&FORMAT=tle',         purpose: 'Earth observation / imagery.',                           kind: 'sci', on: false },
+        { id: 'sarsat',     name: 'Search & Rescue',   color: 0xffaa66, searchTerm: 'sarsat',   url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=sarsat&FORMAT=tle',           purpose: 'COSPAS-SARSAT beacon relay.',                            kind: 'sci', on: false },
+        { id: 'geo',        name: 'Geostationary',     color: 0xffdd88, searchTerm: 'intelsat', url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=geo&FORMAT=tle',              purpose: 'Active geostationary satellites.',                       kind: 'com', on: false },
+        { id: 'intelsat',   name: 'Intelsat',          color: 0x88bbff, searchTerm: 'intelsat', url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=intelsat&FORMAT=tle',         purpose: 'Intelsat commercial comms (GEO).',                       kind: 'com', on: false },
+        { id: 'iridium-NEXT', name: 'Iridium NEXT',    color: 0x5599ee, searchTerm: 'iridium',  url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=iridium-NEXT&FORMAT=tle',     purpose: 'Iridium NEXT voice/data/L-band (LEO, ~780 km).',         kind: 'com', on: false },
+        { id: 'planet',     name: 'Planet Labs',       color: 0x77ee99, searchTerm: 'flock',    url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=planet&FORMAT=tle',           purpose: 'Planet imaging cubesats (Dove/SuperDove).',              kind: 'sci', on: false },
+        { id: 'spire',      name: 'Spire',             color: 0x99ee77, searchTerm: 'lemur',    url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=spire&FORMAT=tle',            purpose: 'Spire Lemur AIS/weather cubesats.',                      kind: 'sci', on: false },
+        { id: 'military',   name: 'Military',          color: 0xff5566, searchTerm: 'usa',      url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=military&FORMAT=tle',         purpose: 'Unclassified military payloads.',                        kind: 'mil', on: false },
+        { id: 'cubesat',    name: 'CubeSats',          color: 0xaaaaaa, searchTerm: 'cubesat',  url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=cubesat&FORMAT=tle',          purpose: 'CubeSat-class smallsats (miscellaneous).',               kind: 'sci', on: false },
+        { id: 'active',     name: 'All Active',        color: 0x888888, searchTerm: '',         url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=tle',           purpose: 'All tracked active objects.',                            kind: 'other', on: false }
     ];
 
     // Offline TLE snapshot — last-resort data so the app always shows *something* even if
@@ -134,35 +134,59 @@
         return out;
     }
 
-    // Fetch TLE text for a catalog, trying multiple mirrors in order. Each mirror is a
-     // function (cat) → URL. A CORS proxy wraps the primary URL as a last resort — useful
-     // when the client network/ISP is blocking CelesTrak directly.
-     const MIRRORS = [
-         (cat) => cat.url,
-         (cat) => cat.url.replace('https://celestrak.org', 'https://www.celestrak.com'),
-         // CORS-anywhere–style public relay (Cloudflare Worker). Usually reliable for GETs.
-         (cat) => 'https://corsproxy.io/?' + encodeURIComponent(cat.url),
-         // Alternative relay.
-         (cat) => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(cat.url)
-     ];
+    // Fetch TLE text for a catalog, trying multiple sources in order.
+    // Primary source: tle.ivanstanojevic.me — free CORS-enabled JSON API, updated from
+    // CelesTrak/Space-Track, no API key. Falls back to CelesTrak direct + CORS proxies.
+    // Catalog groups that don't map 1:1 to a search term still return representative data
+    // from the search-based query (e.g. "starlink" → all Starlink sats).
+    const MIRRORS = [
+        // Primary: ivanstanojevic TLE API, converted from JSON → 3-line TLE text.
+        async (cat) => {
+            const term = cat.searchTerm || cat.id;
+            const url  = 'https://tle.ivanstanojevic.me/api/tle/?search=' + encodeURIComponent(term) + '&page-size=500';
+            const r = await fetch(url, { cache: 'no-cache' });
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            const json = await r.json();
+            if (!json.member || !json.member.length) throw new Error('empty');
+            return json.member.map(m => m.name + '\n' + m.line1 + '\n' + m.line2).join('\n') + '\n';
+        },
+        // Secondary: CelesTrak direct.
+        async (cat) => {
+            const r = await fetch(cat.url, { cache: 'no-cache' });
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return await r.text();
+        },
+        // Tertiary: www.celestrak.com mirror.
+        async (cat) => {
+            const r = await fetch(cat.url.replace('https://celestrak.org', 'https://www.celestrak.com'), { cache: 'no-cache' });
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return await r.text();
+        },
+        // Quaternary: CORS relays over CelesTrak.
+        async (cat) => {
+            const r = await fetch('https://corsproxy.io/?' + encodeURIComponent(cat.url), { cache: 'no-cache' });
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return await r.text();
+        },
+        async (cat) => {
+            const r = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(cat.url), { cache: 'no-cache' });
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return await r.text();
+        }
+    ];
 
-     async function fetchTleText(cat) {
-         let lastErr = null;
-         for (const build of MIRRORS) {
-             const url = build(cat);
-             try {
-                 const resp = await fetch(url, { cache: 'no-cache' });
-                 if (!resp.ok) { lastErr = new Error('HTTP ' + resp.status); continue; }
-                 const txt = await resp.text();
-                 // Sanity check: TLE text must contain at least one line starting with "1 "
-                 if (!/\n1 \d{5}/.test('\n' + txt)) { lastErr = new Error('Invalid TLE payload'); continue; }
-                 return txt;
-             } catch (e) {
-                 lastErr = e;
-             }
-         }
-         throw lastErr || new Error('All mirrors failed');
-     }
+    async function fetchTleText(cat) {
+        let lastErr = null;
+        for (const fetchFn of MIRRORS) {
+            try {
+                const txt = await fetchFn(cat);
+                // Sanity check: must contain at least one "1 NNNNN" line.
+                if (!/\n1 \d{5}/.test('\n' + txt)) { lastErr = new Error('Invalid TLE payload'); continue; }
+                return txt;
+            } catch (e) { lastErr = e; }
+        }
+        throw lastErr || new Error('All sources failed');
+    }
 
     // Fetch all enabled catalogs; report progress via onProgress(catalogName, count).
     async function fetchEnabled(enabledIds, onProgress) {
@@ -191,8 +215,38 @@
         return KNOWN[sat.noradId] || guessMeta(sat.name) || null;
     }
 
-    // On-demand TLE fetch for a single NORAD ID. Tries direct, then CORS proxies.
+    // On-demand TLE fetch for a single NORAD ID. Tries the ivanstanojevic API first
+    // (single-record JSON, CORS-enabled, reliable), then CelesTrak, then CORS relays.
     async function fetchByNoradId(noradId) {
+        // Primary: ivanstanojevic single-sat endpoint.
+        try {
+            const r = await fetch('https://tle.ivanstanojevic.me/api/tle/' + encodeURIComponent(noradId), { cache: 'no-cache' });
+            if (r.ok) {
+                const j = await r.json();
+                if (j && j.line1 && j.line2) {
+                    const fakeCat = { id: 'quick', color: 0xffffff };
+                    const parsed = parseTLE(j.name + '\n' + j.line1 + '\n' + j.line2 + '\n', fakeCat);
+                    if (parsed.length) return parsed[0];
+                }
+            }
+        } catch (e) { /* continue */ }
+
+        // Special case: ISS — use wheretheiss.at's direct TLE endpoint (always available, CORS OK).
+        if (noradId === '25544') {
+            try {
+                const r = await fetch('https://api.wheretheiss.at/v1/satellites/25544/tles', { cache: 'no-cache' });
+                if (r.ok) {
+                    const j = await r.json();
+                    if (j && j.line1 && j.line2) {
+                        const fakeCat = { id: 'quick', color: 0xffffff };
+                        const parsed = parseTLE('ISS (ZARYA)\n' + j.line1 + '\n' + j.line2 + '\n', fakeCat);
+                        if (parsed.length) return parsed[0];
+                    }
+                }
+            } catch (e) { /* continue */ }
+        }
+
+        // Secondary: CelesTrak + relays.
         const primary = 'https://celestrak.org/NORAD/elements/gp.php?CATNR=' + encodeURIComponent(noradId) + '&FORMAT=tle';
         const urls = [
             primary,
@@ -211,7 +265,8 @@
                 if (parsed.length) return parsed[0];
             } catch (e) { /* try next */ }
         }
-        // Fallback to embedded snapshot.
+
+        // Last resort: embedded offline snapshot.
         const snap = OFFLINE_TLES[noradId];
         if (snap) {
             const fakeCat = { id: 'offline', color: 0xffaa44 };
