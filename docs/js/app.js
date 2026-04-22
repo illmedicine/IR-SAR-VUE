@@ -497,13 +497,19 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
     }
 
     let lastFrame = performance.now();
+    let lastPropagate = 0;
+    const PROPAGATE_INTERVAL_MS = 100; // 10 Hz — more than enough for visible orbital motion.
     function frame(now) {
         const dt = now - lastFrame; lastFrame = now;
         if (state.live) {
             state.simTimeMs = (state.timeRate === 1) ? Date.now() : state.simTimeMs + dt * state.timeRate;
         }
         const d = currentDate();
-        propagateAll(d);
+        // Throttle expensive SGP4 propagation to 10 Hz; render still runs at display rate.
+        if (now - lastPropagate > PROPAGATE_INTERVAL_MS || state.timeRate !== 1) {
+            propagateAll(d);
+            lastPropagate = now;
+        }
         elUtc.textContent = d.toISOString().replace('T', ' ').slice(0, 19) + 'Z';
 
         // Update selected marker ring position/orientation to face camera.
