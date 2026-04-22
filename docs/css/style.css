@@ -67,7 +67,9 @@ a:hover { text-decoration: underline; }
     background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
     padding: 12px; backdrop-filter: blur(8px); box-shadow: 0 4px 24px rgba(0,0,0,0.6);
     z-index: 15; font-size: 12px;
+    transition: right 0.2s ease;
 }
+body.imagery-open #info { right: calc(min(640px, 55vw) + 24px); }
 #info.hidden { display: none; }
 .info-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 6px; margin-bottom: 8px; }
 .info-header h3 { margin: 0; font-size: 14px; color: #fff; }
@@ -93,6 +95,52 @@ a:hover { text-decoration: underline; }
     font-size: 10px; color: var(--muted); background: rgba(5,10,25,0.7); padding: 4px 10px; border-radius: 10px;
     z-index: 10; pointer-events: none;
 }
+
+/* ---------- Landsat imagery side panel ---------- */
+#imagery {
+    position: absolute; top: 56px; right: 12px;
+    width: min(640px, 55vw); height: calc(100vh - 70px);
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    backdrop-filter: blur(8px); box-shadow: 0 4px 24px rgba(0,0,0,0.7);
+    z-index: 18; display: flex; flex-direction: column; overflow: hidden;
+}
+#imagery.hidden { display: none; }
+#imagery .info-header { padding: 8px 12px; margin-bottom: 0; }
+.imagery-tabs { display: flex; gap: 4px; flex: 1; justify-content: center; }
+.imagery-tabs .tab {
+    background: rgba(68,255,170,0.06); border: 1px solid var(--border); color: var(--muted);
+    padding: 3px 10px; font-size: 11px; border-radius: 3px; cursor: pointer;
+}
+.imagery-tabs .tab.active { color: var(--accent); border-color: var(--accent); background: rgba(68,255,170,0.15); }
+#imagery-close { background: transparent; border: none; color: var(--muted); font-size: 20px; cursor: pointer; line-height: 1; }
+#imagery-close:hover { color: var(--danger); }
+#imagery-body { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+#imagery-frame-wrap { flex: 1; position: relative; background: #000; min-height: 0; }
+#imagery-frame { width: 100%; height: 100%; border: 0; display: block; }
+.imagery-fallback {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 10px; padding: 20px;
+    background: rgba(5,10,25,0.95); text-align: center;
+}
+.imagery-fallback.hidden { display: none; }
+.imagery-fallback a {
+    padding: 8px 16px; border: 1px solid var(--accent); border-radius: 4px;
+    color: var(--accent); font-size: 13px;
+}
+.imagery-meta { padding: 8px 12px; border-top: 1px solid var(--border); font-size: 11px; }
+.imagery-meta p { margin: 0 0 6px; color: var(--muted); }
+.imagery-links { display: flex; flex-wrap: wrap; gap: 6px; }
+.imagery-links a { font-size: 10px; padding: 3px 7px; border: 1px solid var(--border); border-radius: 3px; }
+
+/* Live-imagery CTA button inside the satellite info panel */
+.imagery-cta {
+    display: inline-block; margin-top: 8px; padding: 6px 12px;
+    background: linear-gradient(90deg, rgba(68,255,170,0.25), rgba(68,255,170,0.08));
+    border: 1px solid var(--accent); color: var(--accent); border-radius: 4px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.5px; cursor: pointer;
+}
+.imagery-cta:hover { background: rgba(68,255,170,0.3); }
+.imagery-cta::before { content: '▶ '; }
 
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }

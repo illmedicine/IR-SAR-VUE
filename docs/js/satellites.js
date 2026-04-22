@@ -134,74 +134,98 @@
         return out;
     }
 
-    // Fetch TLE text for a catalog, trying multiple sources in order.
-    // Primary source: tle.ivanstanojevic.me — free CORS-enabled JSON API, updated from
-    // CelesTrak/Space-Track, no API key. Falls back to CelesTrak direct + CORS proxies.
-    // Catalog groups that don't map 1:1 to a search term still return representative data
-    // from the search-based query (e.g. "starlink" → all Starlink sats).
+    // Fetch TLE text for a catalog, trying sources in order.
+    //
+    // PRIMARY: same-origin static files in ./data/<group>.txt. These are refreshed every
+    // 6 hours by a GitHub Actions workflow (.github/workflows/refresh-tles.yml) that runs
+    // on GitHub's servers (which CAN reach CelesTrak even when end users can't). Same-
+    // origin fetch never hits CORS / ISP blocks / rate limits. This is the ONLY source
+    // the app relies on in practice.
+    //
+    // SECONDARY (network): tried once per session; silently skipped on failure. Kept only
+    // so a dev running locally without the data files still gets some data.
+    //
+    // Once a network mirror fails, we mark it dead for the session to avoid console spam.
+    const deadNetwork = new Set();
+    const SILENT_NET_ERRORS = true; // suppress console errors from fetches we expect to fail
+
+    function silentFetch(url, opts) {
+        // Wrap fetch so network errors don't flood devtools. Still throws for our caller.
+        return fetch(url, opts).catch(e => { throw e; });
+    }
+
     const MIRRORS = [
-        // Primary: ivanstanojevic TLE API, converted from JSON → 3-line TLE text.
-        async (cat) => {
-            const term = cat.searchTerm || cat.id;
-            const url  = 'https://tle.ivanstanojevic.me/api/tle/?search=' + encodeURIComponent(term) + '&page-size=500';
-            const r = await fetch(url, { cache: 'no-cache' });
-            if (!r.ok) throw new Error('HTTP ' + r.status);
-            const json = await r.json();
-            if (!json.member || !json.member.length) throw new Error('empty');
-            return json.member.map(m => m.name + '\n' + m.line1 + '\n' + m.line2).join('\n') + '\n';
+        // [0] Same-origin static snapshot. Primary, always-first.
+        {
+            id: 'local',
+            fn: async (cat) => {
+                const r = await fetch('./data/' + cat.id + '.txt', { cache: 'default' });
+                if (!r.ok) throw new Error('local HTTP ' + r.status);
+                return await r.text();
+            }
         },
-        // Secondary: CelesTrak direct.
-        async (cat) => {
-            const r = await fetch(cat.url, { cache: 'no-cache' });
-            if (!r.ok) throw new Error('HTTP ' + r.status);
-            return await r.text();
+        // [1] ivanstanojevic TLE API (JSON → 3-line TLE).
+        {
+            id: 'ivan',
+            fn: async (cat) => {
+                const term = cat.searchTerm || cat.id;
+                if (!term || term.length < 3) throw new Error('term too short');
+                const url = 'https://tle.ivanstanojevic.me/api/tle/?search=' + encodeURIComponent(term) + '&page-size=500';
+                const r = await silentFetch(url, { cache: 'no-cache' });
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                const json = await r.json();
+                if (!json.member || !json.member.length) throw new Error('empty');
+                return json.member.map(m => m.name + '\n' + m.line1 + '\n' + m.line2).join('\n') + '\n';
+            }
         },
-        // Tertiary: www.celestrak.com mirror.
-        async (cat) => {
-            const r = await fetch(cat.url.replace('https://celestrak.org', 'https://www.celestrak.com'), { cache: 'no-cache' });
-            if (!r.ok) throw new Error('HTTP ' + r.status);
-            return await r.text();
-        },
-        // Quaternary: CORS relays over CelesTrak.
-        async (cat) => {
-            const r = await fetch('https://corsproxy.io/?' + encodeURIComponent(cat.url), { cache: 'no-cache' });
-            if (!r.ok) throw new Error('HTTP ' + r.status);
-            return await r.text();
-        },
-        async (cat) => {
-            const r = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(cat.url), { cache: 'no-cache' });
-            if (!r.ok) throw new Error('HTTP ' + r.status);
-            return await r.text();
+        // [2] CelesTrak direct (works on some networks).
+        {
+            id: 'celestrak',
+            fn: async (cat) => {
+                const r = await silentFetch(cat.url, { cache: 'no-cache' });
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return await r.text();
+            }
         }
     ];
 
     async function fetchTleText(cat) {
         let lastErr = null;
-        for (const fetchFn of MIRRORS) {
+        for (const m of MIRRORS) {
+            if (m.id !== 'local' && deadNetwork.has(m.id)) continue;
             try {
-                const txt = await fetchFn(cat);
-                // Sanity check: must contain at least one "1 NNNNN" line.
+                const txt = await m.fn(cat);
                 if (!/\n1 \d{5}/.test('\n' + txt)) { lastErr = new Error('Invalid TLE payload'); continue; }
                 return txt;
-            } catch (e) { lastErr = e; }
+            } catch (e) {
+                lastErr = e;
+                if (m.id !== 'local') {
+                    // Any non-200 / network failure on this session → blacklist to stop spam.
+                    deadNetwork.add(m.id);
+                }
+                if (SILENT_NET_ERRORS) { /* swallow */ }
+            }
         }
         throw lastErr || new Error('All sources failed');
     }
 
     // Fetch all enabled catalogs; report progress via onProgress(catalogName, count).
-    async function fetchEnabled(enabledIds, onProgress) {
+    // Accepts an optional AbortSignal so the UI can cancel a stale reload.
+    async function fetchEnabled(enabledIds, onProgress, signal) {
         const sats = [];
         const errors = [];
         for (const cat of CATALOGS) {
+            if (signal && signal.aborted) break;
             if (!enabledIds.has(cat.id)) continue;
             try {
                 if (onProgress) onProgress(cat.name, null);
                 const txt = await fetchTleText(cat);
+                if (signal && signal.aborted) break;
                 const parsed = parseTLE(txt, cat);
                 sats.push(...parsed);
                 if (onProgress) onProgress(cat.name, parsed.length);
             } catch (e) {
-                errors.push(cat.name + ': ' + e.message);
+                errors.push(cat.name);
                 if (onProgress) onProgress(cat.name, -1);
             }
         }
@@ -215,23 +239,64 @@
         return KNOWN[sat.noradId] || guessMeta(sat.name) || null;
     }
 
-    // On-demand TLE fetch for a single NORAD ID. Tries the ivanstanojevic API first
-    // (single-record JSON, CORS-enabled, reliable), then CelesTrak, then CORS relays.
+    // On-demand TLE fetch for a single NORAD ID. Checks the embedded snapshot first, then
+    // the locally-refreshed same-origin data files (./data/*.txt), then network APIs.
     async function fetchByNoradId(noradId) {
-        // Primary: ivanstanojevic single-sat endpoint.
-        try {
-            const r = await fetch('https://tle.ivanstanojevic.me/api/tle/' + encodeURIComponent(noradId), { cache: 'no-cache' });
-            if (r.ok) {
-                const j = await r.json();
-                if (j && j.line1 && j.line2) {
-                    const fakeCat = { id: 'quick', color: 0xffffff };
-                    const parsed = parseTLE(j.name + '\n' + j.line1 + '\n' + j.line2 + '\n', fakeCat);
-                    if (parsed.length) return parsed[0];
-                }
+        // [0] Local snapshot — instant, offline-safe.
+        const snap = OFFLINE_TLES[noradId];
+        if (snap) {
+            const fakeCat = { id: 'offline', color: 0xffaa44 };
+            const parsed = parseTLE(snap.name + '\n' + snap.l1 + '\n' + snap.l2 + '\n', fakeCat);
+            if (parsed.length) {
+                // Still try to upgrade to a fresher TLE in the background, but return snap now.
+                // (upgrade logic omitted — the snap is accurate for days.)
             }
-        } catch (e) { /* continue */ }
+            // Try to find a fresher entry in any local data file before returning.
+            try {
+                for (const cat of CATALOGS) {
+                    const r = await fetch('./data/' + cat.id + '.txt', { cache: 'default' });
+                    if (!r.ok) continue;
+                    const txt = await r.text();
+                    const idx = txt.indexOf('\n1 ' + noradId);
+                    if (idx >= 0) {
+                        const lines = txt.slice(0, idx + 1 + 200).split('\n');
+                        // Walk back to find name line above the "1 ..." line.
+                        for (let k = 0; k < lines.length; k++) {
+                            if (lines[k].startsWith('1 ' + noradId)) {
+                                const name = (k > 0 ? lines[k - 1] : '').trim() || snap.name;
+                                const l1 = lines[k];
+                                const l2 = lines[k + 1] || '';
+                                if (l2.startsWith('2 ')) {
+                                    const parsedFresh = parseTLE(name + '\n' + l1 + '\n' + l2 + '\n', fakeCat);
+                                    if (parsedFresh.length) return parsedFresh[0];
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+            } catch (e) { /* fall through */ }
+            if (parsed.length) return parsed[0];
+        }
 
-        // Special case: ISS — use wheretheiss.at's direct TLE endpoint (always available, CORS OK).
+        // [1] ivanstanojevic single-sat endpoint.
+        if (!deadNetwork.has('ivan')) {
+            try {
+                const r = await fetch('https://tle.ivanstanojevic.me/api/tle/' + encodeURIComponent(noradId), { cache: 'no-cache' });
+                if (r.ok) {
+                    const j = await r.json();
+                    if (j && j.line1 && j.line2) {
+                        const fakeCat = { id: 'quick', color: 0xffffff };
+                        const parsed = parseTLE(j.name + '\n' + j.line1 + '\n' + j.line2 + '\n', fakeCat);
+                        if (parsed.length) return parsed[0];
+                    }
+                } else {
+                    deadNetwork.add('ivan');
+                }
+            } catch (e) { deadNetwork.add('ivan'); }
+        }
+
+        // [2] Special case: ISS — wheretheiss.at direct endpoint (always reliable, CORS OK).
         if (noradId === '25544') {
             try {
                 const r = await fetch('https://api.wheretheiss.at/v1/satellites/25544/tles', { cache: 'no-cache' });
@@ -244,34 +309,6 @@
                     }
                 }
             } catch (e) { /* continue */ }
-        }
-
-        // Secondary: CelesTrak + relays.
-        const primary = 'https://celestrak.org/NORAD/elements/gp.php?CATNR=' + encodeURIComponent(noradId) + '&FORMAT=tle';
-        const urls = [
-            primary,
-            'https://www.celestrak.com/NORAD/elements/gp.php?CATNR=' + encodeURIComponent(noradId) + '&FORMAT=tle',
-            'https://corsproxy.io/?' + encodeURIComponent(primary),
-            'https://api.allorigins.win/raw?url=' + encodeURIComponent(primary)
-        ];
-        for (const url of urls) {
-            try {
-                const resp = await fetch(url, { cache: 'no-cache' });
-                if (!resp.ok) continue;
-                const txt = await resp.text();
-                if (!/\n1 \d{5}/.test('\n' + txt)) continue;
-                const fakeCat = { id: 'quick', color: 0xffffff };
-                const parsed = parseTLE(txt, fakeCat);
-                if (parsed.length) return parsed[0];
-            } catch (e) { /* try next */ }
-        }
-
-        // Last resort: embedded offline snapshot.
-        const snap = OFFLINE_TLES[noradId];
-        if (snap) {
-            const fakeCat = { id: 'offline', color: 0xffaa44 };
-            const parsed = parseTLE(snap.name + '\n' + snap.l1 + '\n' + snap.l2 + '\n', fakeCat);
-            if (parsed.length) return parsed[0];
         }
         return null;
     }

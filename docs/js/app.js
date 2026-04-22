@@ -215,24 +215,49 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
     }
 
     // ---------- Satellite loading ----------
-    async function reloadSatellites() {
-        setStatus('Loading TLE catalogs…');
-        clearSelection();
-        const { sats, errors } = await SatCatalog.fetchEnabled(state.enabledCatalogs, (name, count) => {
-            if (count === null)        setStatus('Fetching ' + name + '…');
-            else if (count === -1)     setStatus('Failed: ' + name);
+    // Debounced + cancellable: rapid checkbox toggling collapses into a single reload.
+    let reloadTimer = null;
+    let reloadAbort = null;
+    let reloadInFlight = false;
+    function reloadSatellites() {
+        clearTimeout(reloadTimer);
+        // Cancel any in-flight reload so its late results don't overwrite newer state.
+        if (reloadAbort) { try { reloadAbort.abort(); } catch (e) {} }
+        reloadAbort = new AbortController();
+        const signal = reloadAbort.signal;
+        return new Promise((resolve) => {
+            reloadTimer = setTimeout(async () => {
+                if (reloadInFlight) { resolve(); return; }
+                reloadInFlight = true;
+                setStatus('Loading TLE catalogs…');
+                clearSelection();
+                try {
+                    const { sats, errors } = await SatCatalog.fetchEnabled(
+                        state.enabledCatalogs,
+                        (name, count) => {
+                            if (signal.aborted) return;
+                            if (count === null)     setStatus('Fetching ' + name + '…');
+                            else if (count === -1)  setStatus(name + ' unavailable');
+                        },
+                        signal
+                    );
+                    if (signal.aborted) return;
+                    state.sats = sats;
+                    const counts = {};
+                    sats.forEach(s => { counts[s.catalogId] = (counts[s.catalogId] || 0) + 1; });
+                    SatCatalog.CATALOGS.forEach(c => {
+                        const el = document.getElementById('ct-' + c.id);
+                        if (el) el.textContent = counts[c.id] ? counts[c.id] : '';
+                    });
+                    buildPointCloud();
+                    const errMsg = errors.length ? ('  (offline: ' + errors.length + ')') : '';
+                    setStatus('Tracking ' + sats.length + ' satellites across ' + state.enabledCatalogs.size + ' catalogs.' + errMsg);
+                } finally {
+                    reloadInFlight = false;
+                    resolve();
+                }
+            }, 350);
         });
-        state.sats = sats;
-        // Update per-catalog counts in UI.
-        const counts = {};
-        sats.forEach(s => { counts[s.catalogId] = (counts[s.catalogId] || 0) + 1; });
-        SatCatalog.CATALOGS.forEach(c => {
-            const el = document.getElementById('ct-' + c.id);
-            if (el) el.textContent = counts[c.id] ? counts[c.id] : '';
-        });
-        buildPointCloud();
-        const errMsg = errors.length ? ('\nErrors: ' + errors.join('; ')) : '';
-        setStatus('Tracking ' + sats.length + ' satellites across ' + state.enabledCatalogs.size + ' catalogs.' + errMsg);
     }
 
     function buildPointCloud() {
@@ -432,6 +457,14 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
             '<a href="' + l.href + '" target="_blank" rel="noopener">' + l.label + '</a>'
         ).join('');
 
+        // "Live Imagery" CTA for Landsat 8 / 9 — opens the USGS EarthNow viewer panel.
+        // NORAD 39084 = Landsat 8, 49260 = Landsat 9. Name-match as a fallback.
+        const nmU = (sat.name || '').toUpperCase();
+        const isLandsat = sat.noradId === '49260' || sat.noradId === '39084' || nmU.includes('LANDSAT');
+        const imageryBtn = isLandsat
+            ? '<button class="imagery-cta" id="open-imagery" data-norad="' + sat.noradId + '">Live Imagery Feed</button>'
+            : '';
+
         $('info-name').textContent = sat.name;
         $('info-body').innerHTML =
             '<div class="badges">' +
@@ -453,6 +486,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
                 (meta.power    ? '<dt>Power</dt><dd>' + meta.power + '</dd>'       : '') +
             '</dl>' +
             '<div class="info-section"><h4>Purpose</h4><p>' + purpose + '</p></div>' +
+            imageryBtn +
             '<div class="info-section"><h4>TLE</h4>' +
                 '<p style="font-family:Consolas,monospace;font-size:10px;color:#9bf">' + sat.tle1 + '<br>' + sat.tle2 + '</p>' +
             '</div>' +
@@ -460,7 +494,84 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
                 '<div class="external">' + links + '</div>' +
             '</div>';
         elInfo.classList.remove('hidden');
+
+        // Wire up the imagery button after (re)render.
+        const btn = document.getElementById('open-imagery');
+        if (btn) btn.addEventListener('click', () => openImageryPanel(sat));
     }
+
+    // ---------- Landsat imagery side panel ----------
+    // Sources:
+    //   • EarthNow        — https://earthnow.usgs.gov/observer/  (near-real-time Landsat
+    //                       8/9 downlink as data arrives at EROS, auto-advancing tiles).
+    //   • LandsatLook     — https://landsatlook.usgs.gov/        (interactive 24h / archive
+    //                       viewer with full scene search and replay).
+    //   • NASA Worldview  — https://worldview.earthdata.nasa.gov/?l=Landsat_WELD_CONUS_... 
+    //                       (daily Landsat imagery over GIBS tiles, date-scrubbable).
+    // Note: some of these providers set X-Frame-Options: SAMEORIGIN and cannot be iframed.
+    // We detect that and show a "Open in new tab" fallback so the UX never breaks.
+    const IMAGERY_SOURCES = {
+        live:      { label: 'Live Downlink', url: 'https://earthnow.usgs.gov/observer/',
+                     caption: 'EarthNow — Landsat 8/9 downlink as acquisitions arrive at USGS EROS (near real-time).' },
+        look:      { label: '24h Replay',    url: 'https://landsatlook.usgs.gov/',
+                     caption: 'LandsatLook — scrubbable full-resolution archive; set the date slider to the last 24 hours for replay.' },
+        worldview: { label: 'Worldview',     url: 'https://worldview.earthdata.nasa.gov/?v=-180,-90,180,90&l=Reference_Labels_15m,Reference_Features_15m,Coastlines_15m,Landsat_WELD_CorrectedReflectance_Bands743_Global_Monthly(hidden),MODIS_Terra_CorrectedReflectance_TrueColor&lg=true',
+                     caption: 'NASA Worldview — Landsat and MODIS imagery with a 24-hour timeline at the bottom for replay.' }
+    };
+
+    const elImagery      = $('imagery');
+    const elImageryFrame = $('imagery-frame');
+    const elImageryCap   = $('imagery-caption');
+    const elImageryTitle = $('imagery-title');
+    const elImageryFallback = $('imagery-fallback');
+    const elImageryFallbackLink = $('imagery-fallback-link');
+    let   imageryLoadTimer = null;
+
+    function openImageryPanel(sat) {
+        elImageryTitle.textContent = (sat && sat.name ? sat.name : 'Landsat') + ' — Imagery';
+        elImagery.classList.remove('hidden');
+        document.body.classList.add('imagery-open');
+        // Default tab = live.
+        setImageryTab('live');
+    }
+
+    function closeImageryPanel() {
+        elImagery.classList.add('hidden');
+        document.body.classList.remove('imagery-open');
+        // Stop any playing media by clearing the src.
+        elImageryFrame.src = 'about:blank';
+        elImageryFallback.classList.add('hidden');
+    }
+
+    function setImageryTab(key) {
+        const src = IMAGERY_SOURCES[key];
+        if (!src) return;
+        document.querySelectorAll('#imagery .tab').forEach(t => {
+            t.classList.toggle('active', t.getAttribute('data-tab') === key);
+        });
+        elImageryCap.textContent = src.caption;
+        elImageryFallback.classList.add('hidden');
+        elImageryFrame.style.visibility = 'visible';
+        elImageryFrame.src = src.url;
+
+        // If the provider blocks framing (X-Frame-Options / CSP), onload never fires with
+        // a readable document. Give it 6 s; if nothing rendered, show the fallback link.
+        clearTimeout(imageryLoadTimer);
+        let loaded = false;
+        elImageryFrame.onload = () => { loaded = true; };
+        imageryLoadTimer = setTimeout(() => {
+            if (!loaded) {
+                elImageryFallbackLink.href = src.url;
+                elImageryFallbackLink.textContent = 'Open ' + src.label + ' in new tab →';
+                elImageryFallback.classList.remove('hidden');
+            }
+        }, 6000);
+    }
+
+    document.querySelectorAll('#imagery .tab').forEach(t => {
+        t.addEventListener('click', () => setImageryTab(t.getAttribute('data-tab')));
+    });
+    $('imagery-close').addEventListener('click', closeImageryPanel);
 
     // ---------- Picking ----------
     canvas.addEventListener('click', onCanvasClick);

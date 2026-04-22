@@ -85,6 +85,41 @@
         <div id="info-body"></div>
     </aside>
 
+    <!-- Landsat imagery viewer (slides in from the right; shown on demand) -->
+    <aside id="imagery" class="hidden">
+        <div class="info-header">
+            <h3 id="imagery-title">Landsat Imagery</h3>
+            <div class="imagery-tabs">
+                <button class="tab active" data-tab="live">Live Downlink</button>
+                <button class="tab" data-tab="look">24h Replay</button>
+                <button class="tab" data-tab="worldview">Worldview</button>
+            </div>
+            <button id="imagery-close" title="Close">×</button>
+        </div>
+        <div id="imagery-body">
+            <div id="imagery-frame-wrap">
+                <iframe id="imagery-frame"
+                        title="Landsat imagery"
+                        referrerpolicy="no-referrer"
+                        allow="fullscreen"
+                        loading="lazy"></iframe>
+                <div id="imagery-fallback" class="imagery-fallback hidden">
+                    <p>The embed was blocked by the provider. Open it directly:</p>
+                    <a id="imagery-fallback-link" href="#" target="_blank" rel="noopener">Open in new tab →</a>
+                </div>
+            </div>
+            <div class="imagery-meta">
+                <p id="imagery-caption">Live Landsat 8/9 downlink as acquisitions arrive at USGS EROS.</p>
+                <div class="imagery-links">
+                    <a href="https://earthnow.usgs.gov/observer/" target="_blank" rel="noopener">EarthNow ↗</a>
+                    <a href="https://landsatlook.usgs.gov/" target="_blank" rel="noopener">LandsatLook ↗</a>
+                    <a href="https://worldview.earthdata.nasa.gov/" target="_blank" rel="noopener">NASA Worldview ↗</a>
+                    <a href="https://landsat.usgs.gov/landsat-acquisition-tool" target="_blank" rel="noopener">Acquisition Tool ↗</a>
+                </div>
+            </div>
+        </div>
+    </aside>
+
     <div id="hud-hint">Drag to rotate · Scroll to zoom · Click a satellite for details</div>
 </div>
 

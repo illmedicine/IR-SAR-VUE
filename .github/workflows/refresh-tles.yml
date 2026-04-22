@@ -1,0 +1,66 @@
+name: Refresh TLE Data
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'  # every 6 hours
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch CelesTrak TLE catalogs
+        run: |
+          mkdir -p docs/data
+          groups=(stations starlink oneweb gps-ops glo-ops galileo beidou \
+                  science weather noaa goes resource sarsat geo intelsat \
+                  iridium-NEXT planet spire military cubesat active)
+          for g in "${groups[@]}"; do
+            echo "Fetching $g…"
+            curl -fsSL --max-time 60 --retry 3 --retry-delay 5 \
+              "https://celestrak.org/NORAD/elements/gp.php?GROUP=${g}&FORMAT=tle" \
+              -o "docs/data/${g}.txt" || echo "  failed: $g"
+            # Sanity: kill empty / error responses.
+            if [ ! -s "docs/data/${g}.txt" ] || ! grep -q '^1 ' "docs/data/${g}.txt"; then
+              echo "  invalid payload for $g, removing"
+              rm -f "docs/data/${g}.txt"
+            else
+              lines=$(wc -l < "docs/data/${g}.txt")
+              echo "  $g: $lines lines"
+            fi
+          done
+          # Manifest so the client knows what's available + freshness.
+          (
+            echo "{"
+            echo "  \"updated\": \"$(date -u +%FT%TZ)\","
+            echo "  \"catalogs\": {"
+            first=1
+            for f in docs/data/*.txt; do
+              [ -f "$f" ] || continue
+              name=$(basename "$f" .txt)
+              sats=$(grep -c '^1 ' "$f" || echo 0)
+              if [ "$first" = "1" ]; then first=0; else echo ","; fi
+              printf '    "%s": %s' "$name" "$sats"
+            done
+            echo ""
+            echo "  }"
+            echo "}"
+          ) > docs/data/manifest.json
+          cat docs/data/manifest.json
+
+      - name: Commit updated TLEs
+        run: |
+          git config user.name  'tle-bot'
+          git config user.email 'tle-bot@users.noreply.github.com'
+          git add docs/data
+          if git diff --cached --quiet; then
+            echo "No TLE changes."
+          else
+            git commit -m "Refresh TLE data $(date -u +%FT%TZ)"
+            git push
+          fi
