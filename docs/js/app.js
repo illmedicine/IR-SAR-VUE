@@ -8,6 +8,9 @@
  * thousands of points at once). Picking is done in screen space (nearest-neighbor to the
  * click position) rather than via raycasting, since points have no true geometry.
  */
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
 (function () {
     'use strict';
 
@@ -25,7 +28,7 @@
     const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 1000);
     camera.position.set(0, 0.6, 3.6);
 
-    const controls = new THREE.OrbitControls(camera, canvas);
+    const controls = new OrbitControls(camera, canvas);
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
     controls.minDistance = 1.08;
@@ -55,22 +58,43 @@
         scene.add(new THREE.Points(geo, mat));
     })();
 
-    // Earth: shaded sphere + equatorial grid to hint orientation. Swap in a texture later
-    // (bluemarble etc.) — for prototyping we keep the app dependency-free.
+    // Earth: textured sphere. Uses a free BlueMarble-style texture hosted on a public CDN.
+    // On texture-load failure we fall back to a shaded blue sphere so the app still works offline.
     const earthGroup = new THREE.Group();
     scene.add(earthGroup);
     {
-        const geo = new THREE.SphereGeometry(1, 64, 48);
-        const mat = new THREE.MeshPhongMaterial({ color: 0x1b3a6b, specular: 0x335577, shininess: 12, emissive: 0x050a1a });
-        earthGroup.add(new THREE.Mesh(geo, mat));
-        // Wireframe overlay for continents feel.
-        const wire = new THREE.Mesh(new THREE.SphereGeometry(1.001, 36, 24), new THREE.MeshBasicMaterial({ color: 0x3a6aa8, wireframe: true, transparent: true, opacity: 0.18 }));
-        earthGroup.add(wire);
-        // Equator + prime-meridian rings.
-        const ringMat = new THREE.LineBasicMaterial({ color: 0x4477bb, transparent: true, opacity: 0.35 });
-        const eqPts = []; for (let i = 0; i <= 128; i++) { const a = (i / 128) * Math.PI * 2; eqPts.push(new THREE.Vector3(Math.cos(a), 0, Math.sin(a)).multiplyScalar(1.002)); }
+        const geo = new THREE.SphereGeometry(1, 96, 64);
+        const mat = new THREE.MeshPhongMaterial({ color: 0x1b3a6b, specular: 0x223344, shininess: 18, emissive: 0x050a14 });
+        const earthMesh = new THREE.Mesh(geo, mat);
+        earthGroup.add(earthMesh);
+
+        const loader = new THREE.TextureLoader();
+        loader.setCrossOrigin('anonymous');
+        // Public-domain NASA Blue Marble mirror on jsdelivr (via turban/webgl-earth textures repo).
+        // If this 404s or is blocked, we keep the plain blue sphere.
+        loader.load(
+            'https://cdn.jsdelivr.net/gh/turban/webgl-earth@master/images/2_no_clouds_4k.jpg',
+            (tex) => {
+                tex.colorSpace = THREE.SRGBColorSpace;
+                mat.map = tex;
+                mat.color.setHex(0xffffff);
+                mat.needsUpdate = true;
+            },
+            undefined,
+            () => { /* silent fallback — plain blue sphere */ }
+        );
+        // Optional specular map (oceans shinier than land).
+        loader.load(
+            'https://cdn.jsdelivr.net/gh/turban/webgl-earth@master/images/water_4k.png',
+            (tex) => { mat.specularMap = tex; mat.specular = new THREE.Color(0x2233aa); mat.needsUpdate = true; },
+            undefined, () => {}
+        );
+
+        // Equator + prime-meridian rings for orientation.
+        const ringMat = new THREE.LineBasicMaterial({ color: 0x4477bb, transparent: true, opacity: 0.25 });
+        const eqPts = []; for (let i = 0; i <= 128; i++) { const a = (i / 128) * Math.PI * 2; eqPts.push(new THREE.Vector3(Math.cos(a), 0, Math.sin(a)).multiplyScalar(1.003)); }
         earthGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(eqPts), ringMat));
-        const pmPts = []; for (let i = 0; i <= 128; i++) { const a = (i / 128) * Math.PI * 2; pmPts.push(new THREE.Vector3(Math.cos(a), Math.sin(a), 0).multiplyScalar(1.002)); }
+        const pmPts = []; for (let i = 0; i <= 128; i++) { const a = (i / 128) * Math.PI * 2; pmPts.push(new THREE.Vector3(Math.cos(a), Math.sin(a), 0).multiplyScalar(1.003)); }
         earthGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pmPts), ringMat));
     }
 
@@ -133,6 +157,36 @@
     $('live').addEventListener('change', (e) => { state.live = e.target.checked; });
     $('timerate').addEventListener('change', (e) => { state.timeRate = parseFloat(e.target.value); });
     $('info-close').addEventListener('click', () => { clearSelection(); });
+
+    // Quick Track buttons: select by NORAD ID (or load that satellite on-demand if missing).
+    document.querySelectorAll('#quick-track button').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const norad = btn.getAttribute('data-norad');
+            let idx = state.sats.findIndex(s => s.noradId === norad);
+            if (idx < 0) {
+                setStatus('Fetching TLE for NORAD ' + norad + '…');
+                const added = await SatCatalog.fetchByNoradId(norad);
+                if (added) {
+                    state.sats.push(added);
+                    buildPointCloud();
+                    idx = state.sats.length - 1;
+                    setStatus('Tracking ' + state.sats.length + ' satellites.');
+                } else {
+                    setStatus('Could not fetch TLE for NORAD ' + norad + '.');
+                    return;
+                }
+            }
+            // Propagate once so the new sat has a position before selection visuals compute.
+            propagateAll(currentDate());
+            selectSatellite(idx);
+            // Ease the camera toward the satellite.
+            const p = state.positions;
+            const target = new THREE.Vector3(p[idx * 3], p[idx * 3 + 1], p[idx * 3 + 2]);
+            controls.target.copy(target.clone().normalize().multiplyScalar(0));
+            const camDist = Math.max(1.8, target.length() * 1.6);
+            camera.position.copy(target.clone().normalize().multiplyScalar(camDist));
+        });
+    });
 
     // Debounced search.
     let searchTimer = null;

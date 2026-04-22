@@ -116,6 +116,22 @@
         return KNOWN[sat.noradId] || guessMeta(sat.name) || null;
     }
 
+    // On-demand TLE fetch for a single NORAD ID. Uses CelesTrak's CATNR query (CORS-enabled).
+    async function fetchByNoradId(noradId) {
+        const url = 'https://celestrak.org/NORAD/elements/gp.php?CATNR=' + encodeURIComponent(noradId) + '&FORMAT=tle';
+        try {
+            const resp = await fetch(url, { cache: 'no-cache' });
+            if (!resp.ok) return null;
+            const txt = await resp.text();
+            // Use the 'active' catalog defaults for color / grouping.
+            const fakeCat = { id: 'quick', color: 0xffffff };
+            const parsed = parseTLE(txt, fakeCat);
+            return parsed.length ? parsed[0] : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
     // External references the info panel can link out to.
     function externalLinks(sat) {
         const nid = sat.noradId;
@@ -127,5 +143,5 @@
         ];
     }
 
-    global.SatCatalog = { CATALOGS, KNOWN, parseTLE, fetchEnabled, metaFor, externalLinks };
+    global.SatCatalog = { CATALOGS, KNOWN, parseTLE, fetchEnabled, fetchByNoradId, metaFor, externalLinks };
 })(window);

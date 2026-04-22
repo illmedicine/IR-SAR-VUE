@@ -6,11 +6,19 @@
 <title>NIS SAR Viewer — Real-Time Satellite Tracker</title>
 <link rel="stylesheet" href="css/style.css" />
 <link rel="icon" href="data:," />
-<!-- Three.js r149 (last release where examples/js/* attach to window.THREE as globals)
-     + satellite.js via CDN. Pinned for stability. -->
-<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/examples/js/controls/OrbitControls.js"></script>
+
+<!-- satellite.js (UMD, exposes window.satellite). Real-time SGP4 propagation. -->
 <script src="https://cdn.jsdelivr.net/npm/satellite.js@5.0.0/dist/satellite.min.js"></script>
+
+<!-- Three.js via ES modules + importmap (official approach for r150+). -->
+<script type="importmap">
+{
+    "imports": {
+        "three":         "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+}
+</script>
 </head>
 <body>
 <div id="app">
@@ -51,6 +59,14 @@
             <input type="range" id="point-size" min="1" max="8" step="0.5" value="3" />
         </label>
 
+        <h2>Quick Track</h2>
+        <div id="quick-track" class="quick-track">
+            <button data-norad="25544">ISS</button>
+            <button data-norad="20580">Hubble</button>
+            <button data-norad="48274">Tiangong</button>
+            <button data-norad="49260">Landsat 9</button>
+        </div>
+
         <h2>Search</h2>
         <input type="text" id="search" placeholder="Search by name or NORAD ID…" />
         <div id="search-results"></div>
@@ -73,6 +89,6 @@
 </div>
 
 <script src="js/satellites.js"></script>
-<script src="js/app.js"></script>
+<script type="module" src="js/app.js"></script>
 </body>
 </html>
