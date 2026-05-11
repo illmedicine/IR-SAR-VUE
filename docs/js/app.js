@@ -14,6 +14,8 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 (function () {
     'use strict';
 
+    const W = window;
+
     // Earth radius in km; scene scale is 1 unit = 1 Earth radius so the globe mesh is a unit sphere.
     const R_EARTH_KM = 6371.0;
 
@@ -455,6 +457,18 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         const inc    = (sat.satrec.inclo * 180 / Math.PI).toFixed(2) + '°';
         const ecc    = sat.satrec.ecco.toFixed(5);
 
+        // Reverse-geocode the sub-satellite point so the card shows what the
+        // satellite is currently flying over (country/state, or ocean).
+        let location = '—';
+        if (pv && pv.position && W.WorldGeo && W.WorldGeo.loaded) {
+            const gmst2 = satellite.gstime(now);
+            const g2 = satellite.eciToGeodetic(pv.position, gmst2);
+            location = W.WorldGeo.locationFor(
+                satellite.degreesLat(g2.latitude),
+                satellite.degreesLong(g2.longitude)
+            );
+        }
+
         // TLE epoch (data freshness). satrec.epochyr is 2-digit; satrec.epochdays = day-of-year.
         // Propagation accuracy degrades ~1 km/day for LEO; show age so users can judge it.
         let epochStr = '—', ageStr = '';
@@ -487,6 +501,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
             '</div>' +
             '<dl class="kv">' +
                 '<dt>NORAD ID</dt><dd>' + sat.noradId + '</dd>' +
+                '<dt>Location</dt><dd>' + location + '</dd>' +
                 '<dt>Altitude</dt><dd>' + altKm + '</dd>' +
                 '<dt>Lat / Lon</dt><dd>' + lat + ' / ' + lon + '</dd>' +
                 '<dt>Speed</dt><dd>' + speed + '</dd>' +
@@ -720,6 +735,102 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         return new Date(state.simTimeMs);
     }
 
+    // ---------- Country / state label overlay ----------
+    // Loads after the scene boots; each label is an HTML div whose position is
+    // recomputed every frame from the country/state centroid attached to the
+    // (rotating) earthGroup.
+    const labelLayer = (function makeLabelLayer() {
+        const div = document.createElement('div');
+        div.id = 'geo-labels';
+        Object.assign(div.style, {
+            position: 'absolute', inset: '0', overflow: 'hidden',
+            pointerEvents: 'none', zIndex: '6'
+        });
+        canvas.parentElement.appendChild(div);
+        return div;
+    })();
+
+    const labels = []; // { div, lat, lon, kind: 'country' | 'state' }
+    const _tmp = new THREE.Vector3();
+
+    function addLabels(list, kind, className) {
+        list.forEach(c => {
+            const d = document.createElement('div');
+            d.className = className;
+            d.textContent = c.name;
+            labelLayer.appendChild(d);
+            labels.push({ div: d, lat: c.centroid[0], lon: c.centroid[1], kind: kind });
+        });
+    }
+
+    if (W.WorldGeo) {
+        W.WorldGeo.load().then(() => {
+            addLabels(W.WorldGeo.countries, 'country', 'geo-label country');
+            addLabels(W.WorldGeo.states,    'state',   'geo-label state');
+        });
+    }
+
+    function updateGeoLabels() {
+        if (!labels.length) return;
+        const w = window.innerWidth, h = window.innerHeight;
+        const dist = camera.position.length();
+
+        // Two fade bands so labels appear progressively as you zoom in.
+        // Country labels: visible from dist ≤ 4.0 (fully on by 2.8).
+        // State labels:   visible from dist ≤ 1.9 (fully on by 1.45) — only when really close.
+        const countryOpacity = clamp01((4.0 - dist) / 1.2);
+        const stateOpacity   = clamp01((1.9 - dist) / 0.45);
+        if (countryOpacity <= 0 && stateOpacity <= 0) {
+            for (const L of labels) L.div.style.display = 'none';
+            return;
+        }
+
+        const gmst = earthGroup.rotation.y;
+        const cosG = Math.cos(gmst), sinG = Math.sin(gmst);
+        const camX = camera.position.x, camY = camera.position.y, camZ = camera.position.z;
+
+        for (const L of labels) {
+            const op = L.kind === 'country' ? countryOpacity : stateOpacity;
+            if (op <= 0) { L.div.style.display = 'none'; continue; }
+
+            const latR = L.lat * Math.PI / 180;
+            const lonR = L.lon * Math.PI / 180;
+            // Earth-local unit position; matches the satellite TEME→Three.js mapping
+            // (x, y, z) = (cosLat·cosLon, sinLat, -cosLat·sinLon)
+            const x0 = Math.cos(latR) * Math.cos(lonR);
+            const y0 = Math.sin(latR);
+            const z0 = -Math.cos(latR) * Math.sin(lonR);
+            // Apply earthGroup.rotation.y = gmst.
+            const x = x0 * cosG + z0 * sinG;
+            const y = y0;
+            const z = -x0 * sinG + z0 * cosG;
+
+            // Cull when the centroid is on the back hemisphere relative to camera.
+            const vx = camX - x, vy = camY - y, vz = camZ - z;
+            const dot = x * vx + y * vy + z * vz;
+            if (dot <= 0) { L.div.style.display = 'none'; continue; }
+
+            _tmp.set(x * 1.005, y * 1.005, z * 1.005).project(camera);
+            if (_tmp.z > 1 || _tmp.x < -1.05 || _tmp.x > 1.05 || _tmp.y < -1.05 || _tmp.y > 1.05) {
+                L.div.style.display = 'none';
+                continue;
+            }
+            L.div.style.display = 'block';
+            L.div.style.left = ((_tmp.x * 0.5 + 0.5) * w) + 'px';
+            L.div.style.top  = ((-_tmp.y * 0.5 + 0.5) * h) + 'px';
+            L.div.style.opacity = op;
+        }
+    }
+
+    function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
+
+    // Refresh the satellite info card once per second so Location / Lat / Lon track motion.
+    setInterval(() => {
+        if (state.selected != null && state.sats[state.selected]) {
+            renderInfoPanel(state.sats[state.selected]);
+        }
+    }, 1000);
+
     let lastFrame = performance.now();
     let lastPropagate = 0;
     const PROPAGATE_INTERVAL_MS = 100; // 10 Hz — more than enough for visible orbital motion.
@@ -746,6 +857,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
         controls.update();
         renderer.render(scene, camera);
+        updateGeoLabels();
         requestAnimationFrame(frame);
     }
 

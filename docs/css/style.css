@@ -131,6 +131,34 @@ body.info-open    #brand-watermark { opacity: 0.25; }
     }
 }
 
+/* ---------- Country / state label overlay ---------- */
+#geo-labels { font-family: 'Segoe UI', Tahoma, sans-serif; }
+.geo-label {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    white-space: nowrap;
+    color: #e8f1ff;
+    text-shadow:
+        0 0 3px rgba(0, 0, 0, 0.95),
+        0 0 6px rgba(0, 0, 0, 0.85),
+        0 1px 0 rgba(0, 0, 0, 0.9);
+    pointer-events: none;
+    user-select: none;
+    will-change: left, top, opacity;
+}
+.geo-label.country {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+}
+.geo-label.state {
+    font-size: 10px;
+    font-weight: 500;
+    color: #cfe2ff;
+    letter-spacing: 0.3px;
+}
+
 /* ---------- Landsat imagery side panel ---------- */
 #imagery {
     position: absolute; top: 56px; right: 12px;
