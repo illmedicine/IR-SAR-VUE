@@ -1,4 +1,4 @@
-# NIS SAR Viewer — Real-Time Orbital Tracker
+# World SAR — Real-Time Orbital Tracker
 
 A browser-based 3D globe that tracks every satellite in selected CelesTrak catalogs in real time, using SGP4 propagation. Click any satellite to see its name, operator, purpose, orbit, and external reference links.
 

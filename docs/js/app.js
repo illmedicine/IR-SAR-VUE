@@ -1,4 +1,4 @@
-/* app.js — main rendering / propagation loop for the NIS SAR Viewer.
+/* app.js — main rendering / propagation loop for World SAR (Illy Robotic Instruments).
  *
  * Uses Three.js for the globe + satellite point cloud, and satellite.js for SGP4
  * propagation of each catalog entry. All coordinates are converted from TEME (satellite.js

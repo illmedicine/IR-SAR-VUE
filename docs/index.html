@@ -3,9 +3,11 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>NIS SAR Viewer — Real-Time Satellite Tracker</title>
+<title>World SAR — Real-World Orbital Satellite Tracker</title>
+<meta name="description" content="World SAR by Illy Robotic Instruments — real-time orbital satellite tracker." />
 <link rel="stylesheet" href="css/style.css" />
-<link rel="icon" href="data:," />
+<link rel="icon" type="image/png" href="assets/logo.png" />
+<link rel="apple-touch-icon" href="assets/logo.png" />
 
 <!-- satellite.js (UMD, exposes window.satellite). Real-time SGP4 propagation. -->
 <script src="https://cdn.jsdelivr.net/npm/satellite.js@5.0.0/dist/satellite.min.js"></script>
@@ -31,8 +33,8 @@
     <!-- Header bar -->
     <header id="topbar">
         <div class="brand">
-            <span class="logo">◉</span>
-            <span class="title">NIS SAR Viewer</span>
+            <img class="logo-img" src="assets/logo.png" alt="World SAR" />
+            <span class="title">WORLD SAR</span>
             <span class="subtitle">Real-Time Orbital Tracker</span>
         </div>
         <div class="clock">
@@ -158,6 +160,11 @@
     </aside>
 
     <div id="hud-hint">Drag to rotate · Scroll to zoom · Click a satellite for details</div>
+
+    <!-- Ghostly brand watermark hovering beyond the Earth. -->
+    <div id="brand-watermark" aria-hidden="true">
+        <img src="assets/logo.png" alt="" />
+    </div>
 </div>
 
 <script src="js/satellites.js"></script>

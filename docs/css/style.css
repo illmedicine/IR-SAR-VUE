@@ -23,10 +23,13 @@ a:hover { text-decoration: underline; }
     z-index: 20; pointer-events: none;
 }
 #topbar > * { pointer-events: auto; }
-.brand { display: flex; align-items: baseline; gap: 10px; }
-.logo { color: var(--accent); font-size: 22px; }
-.title { font-weight: 600; font-size: 16px; letter-spacing: 0.5px; }
-.subtitle { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+.brand { display: flex; align-items: center; gap: 10px; }
+.logo-img {
+    width: 34px; height: 34px; object-fit: contain; display: block;
+    filter: drop-shadow(0 0 10px rgba(68, 255, 170, 0.55));
+}
+.title { font-weight: 700; font-size: 17px; letter-spacing: 1.5px; color: #ffffff; text-shadow: 0 0 12px rgba(68, 255, 170, 0.35); }
+.subtitle { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 1.4px; align-self: center; }
 .clock { display: flex; align-items: center; gap: 12px; font-size: 12px; color: var(--muted); }
 .clock #utc { font-family: 'Consolas', monospace; color: var(--accent); font-weight: 600; }
 .clock select { background: #0e1630; color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 2px 4px; }
@@ -94,6 +97,34 @@ body.imagery-open #info { right: calc(min(640px, 55vw) + 24px); }
     position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
     font-size: 10px; color: var(--muted); background: rgba(5,10,25,0.7); padding: 4px 10px; border-radius: 10px;
     z-index: 10; pointer-events: none;
+}
+
+/* Ghostly World SAR watermark floating in space, behind the UI. */
+#brand-watermark {
+    position: absolute;
+    top: 50%; right: 6vw;
+    transform: translateY(-50%);
+    width: min(38vmin, 360px);
+    height: min(38vmin, 360px);
+    pointer-events: none;
+    opacity: 0.18;
+    z-index: 5; /* above the WebGL canvas (1) but below all panels (15+) */
+    filter: drop-shadow(0 0 28px rgba(68, 255, 170, 0.55)) drop-shadow(0 0 60px rgba(40, 120, 255, 0.35));
+    animation: brand-float 9s ease-in-out infinite alternate;
+}
+#brand-watermark img { width: 100%; height: 100%; object-fit: contain; display: block; }
+@keyframes brand-float {
+    from { transform: translateY(calc(-50% - 6px)); opacity: 0.16; }
+    to   { transform: translateY(calc(-50% + 6px)); opacity: 0.22; }
+}
+body.imagery-open #brand-watermark,
+body.info-open    #brand-watermark { opacity: 0.08; }
+@media (max-width: 720px) {
+    #brand-watermark { right: 50%; transform: translate(50%, -50%); width: 60vmin; height: 60vmin; opacity: 0.12; }
+    @keyframes brand-float {
+        from { transform: translate(50%, calc(-50% - 4px)); opacity: 0.10; }
+        to   { transform: translate(50%, calc(-50% + 4px)); opacity: 0.16; }
+    }
 }
 
 /* ---------- Landsat imagery side panel ---------- */
