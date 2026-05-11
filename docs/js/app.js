@@ -31,8 +31,10 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
     const controls = new OrbitControls(camera, canvas);
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
-    controls.minDistance = 1.08;
-    controls.maxDistance = 20;
+    controls.minDistance = 1.15;   // just outside the Earth surface
+    controls.maxDistance = 6.5;    // keep the globe comfortably on-screen
+    controls.zoomSpeed   = 0.5;    // calmer wheel response (default 1.0 was too aggressive)
+    controls.rotateSpeed = 0.7;
 
     // Lighting: weak ambient + directional "sun" to give the globe some shading.
     scene.add(new THREE.AmbientLight(0x334466, 0.6));
