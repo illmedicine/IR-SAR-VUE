@@ -1,11 +1,11 @@
 {
-  "updated": "2026-05-18T18:44:11Z",
+  "updated": "2026-05-19T01:01:16Z",
   "catalogs": {
-    "active": 15439,
+    "active": 15435,
     "beidou": 54,
     "cubesat": 87,
     "galileo": 33,
-    "geo": 571,
+    "geo": 568,
     "glo-ops": 28,
     "goes": 6,
     "gps-ops": 32,
@@ -19,7 +19,7 @@
     "science": 48,
     "spire": 76,
     "starlink": 10363,
-    "stations": 28,
+    "stations": 27,
     "weather": 70
   }
 }
