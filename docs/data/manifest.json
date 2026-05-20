@@ -1,5 +1,5 @@
 {
-  "updated": "2026-05-19T18:48:56Z",
+  "updated": "2026-05-20T01:03:05Z",
   "catalogs": {
     "active": 15449,
     "beidou": 54,
@@ -13,8 +13,8 @@
     "iridium-NEXT": 80,
     "military": 23,
     "oneweb": 651,
-    "planet": 137,
-    "resource": 161,
+    "planet": 136,
+    "resource": 167,
     "sarsat": 84,
     "science": 49,
     "spire": 76,
