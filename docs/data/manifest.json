@@ -1,11 +1,11 @@
 {
-  "updated": "2026-06-13T18:36:39Z",
+  "updated": "2026-06-14T01:11:01Z",
   "catalogs": {
-    "active": 15700,
+    "active": 15699,
     "beidou": 54,
     "cubesat": 87,
     "galileo": 33,
-    "geo": 575,
+    "geo": 574,
     "glo-ops": 28,
     "goes": 6,
     "gps-ops": 32,
@@ -13,7 +13,7 @@
     "iridium-NEXT": 80,
     "military": 23,
     "oneweb": 651,
-    "planet": 135,
+    "planet": 134,
     "resource": 167,
     "sarsat": 84,
     "science": 49,
