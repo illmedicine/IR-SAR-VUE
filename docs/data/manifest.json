@@ -1,7 +1,7 @@
 {
-  "updated": "2026-06-21T14:19:15Z",
+  "updated": "2026-06-21T19:48:25Z",
   "catalogs": {
-    "active": 15830,
+    "active": 15827,
     "beidou": 53,
     "cubesat": 87,
     "galileo": 33,
@@ -11,14 +11,14 @@
     "gps-ops": 32,
     "intelsat": 56,
     "iridium-NEXT": 80,
-    "military": 23,
+    "military": 24,
     "oneweb": 651,
-    "planet": 129,
+    "planet": 128,
     "resource": 167,
     "sarsat": 84,
     "science": 49,
     "spire": 73,
-    "starlink": 10636,
+    "starlink": 10634,
     "stations": 24,
     "weather": 74
   }
