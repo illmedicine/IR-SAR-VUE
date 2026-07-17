@@ -1,11 +1,11 @@
 {
-  "updated": "2026-07-16T18:30:18Z",
+  "updated": "2026-07-17T00:43:28Z",
   "catalogs": {
-    "active": 16071,
+    "active": 16070,
     "beidou": 53,
     "cubesat": 85,
     "galileo": 32,
-    "geo": 571,
+    "geo": 570,
     "glo-ops": 28,
     "goes": 6,
     "gps-ops": 32,
