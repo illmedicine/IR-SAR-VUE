@@ -1,7 +1,7 @@
 {
-  "updated": "2026-09-21T18:18:18Z",
+  "updated": "2026-09-22T00:42:08Z",
   "catalogs": {
-    "active": 15994,
+    "active": 15990,
     "beidou": 54,
     "cubesat": 83,
     "galileo": 32,
@@ -18,7 +18,7 @@
     "sarsat": 83,
     "science": 46,
     "spire": 72,
-    "starlink": 10695,
+    "starlink": 10691,
     "stations": 20,
     "weather": 71
   }
