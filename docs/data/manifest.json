@@ -1,8 +1,8 @@
 {
-  "updated": "2026-10-23T12:21:40Z",
+  "updated": "2026-10-23T18:18:22Z",
   "catalogs": {
-    "active": 15917,
-    "beidou": 54,
+    "active": 15916,
+    "beidou": 53,
     "cubesat": 84,
     "galileo": 32,
     "geo": 569,
@@ -15,7 +15,7 @@
     "oneweb": 651,
     "planet": 116,
     "resource": 167,
-    "sarsat": 83,
+    "sarsat": 82,
     "science": 46,
     "spire": 72,
     "starlink": 10643,
